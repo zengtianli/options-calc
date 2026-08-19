@@ -1,0 +1,24 @@
+name: options-calc
+origin: own
+lifecycle: active
+form: ios          # ~/Apps/ios 形态的首个住户(2026-08-18 立)
+
+one_liner: 期权决策台 —— 备兑开仓 / 现金担保 put / 信用价差 / 铁鹰四结构的到期损益、占用、年化与概率
+
+stack: swift-ui
+notes: |
+  算式**不是重写的,是移植的**:源 = ~/Dev/stations/apps-site/webapps/options.html
+  第 422-647 行(CORE-START..CORE-END 纯计算层)。Sources/Calc.swift 逐行照搬。
+
+  两侧共读同一份 ref/cases.json 做回归(此前两边各写一份参数,「逐字相同」全靠人盯):
+      node ref/gen.js  → expected.json      (跑真 options.html 的 CORE 块)
+      ./ref/regress    → actual.json        (跑真 Sources/Calc.swift)
+      node ref/diff.js → 8 用例 / 397 数值 + 83 段文案(逐字)
+
+  **文案也进对账**是踩出来的:早先只对数值,209 值全绿的同时 cc 告警少了五个字、
+  Int(n) 把 1.5 张截断成 1 张(而同组还印着「多 150 股」)。加文案层后第一次跑就
+  又抓到千分位 $2,370 vs $2370。
+
+  真机装机走 ./install-to-iphone.sh(免费 Personal Team,证书 7 天到期,重跑即续)。
+  设备探测抽在 detect_device.py,由 test-device-detect.py 11 例双向验证 ——
+  含「只有模拟器时绝不能挑它」(实测踩过:手机拔线后脚本挑走模拟器,编到一半才炸)。
