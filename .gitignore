@@ -23,3 +23,6 @@ ref/actual.json
 !Resources/Assets.xcassets/AppIcon.appiconset/icon-1024.png
 # shots/ 是验收证据(四档屏 + 主屏图标),几 MB,按上面那条策略留本地不进仓;
 # 要复现:./build.sh && xcrun simctl install/launch,再 simctl io screenshot。
+
+# CC 本地覆盖(可能含机器专属路径/开关),harness audit D6-GITIGNORE 要求
+.claude/settings.local.json
