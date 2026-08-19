@@ -21,7 +21,9 @@
 ### ② 回归两侧共读同一份用例
 
 ```bash
-export DEVELOPER_DIR=/Applications/Xcode-27.0.0-Beta.5.app/Contents/Developer
+# Xcode 走总部 SSOT 现挑（原文钉在 Xcode-27.0.0-Beta.5 这个具体版本号上，
+# 下一个 beta 落地即变成 missing DEVELOPER_DIR path）
+source /Users/tianli/Dev/tools/dev/lib/tools/macapp/xcode_env.sh && xcode_env_use macosx
 xcrun swiftc -O Sources/Calc.swift ref/main.swift -o ref/regress
 ./ref/regress >| ref/actual.json && node ref/diff.js
 # → 8 用例 / 397 个数值(容差 1e-9) + 83 段文案(逐字)
@@ -47,7 +49,14 @@ xcrun swiftc -O Sources/Calc.swift ref/main.swift -o ref/regress
 
 **手机系统比 Xcode 新 → `connected (no DDI)`，装不上。**
 iPhone 17 / iOS 27.0 配 Xcode 26.6（iOS SDK 26.5）就是这个症状。
-脚本因此**按 iOS SDK 版本自动挑 Xcode，不写死路径**。
+脚本因此**按 iOS SDK 版本自动挑 Xcode，不写死路径** —— 挑选逻辑不在本仓，
+在总部 SSOT `~/Dev/tools/dev/lib/tools/macapp/xcode_env.{py,sh}`（本文件与 README 的
+重跑命令都 `source` 它，一个 Xcode 路径字面量都不留）。
+
+> 2026-08-19 补：26.6 那个 `.app` 现已被 macOS 27.0 判为不支持、**GUI 打不开**
+> （弹 `This version of Xcode isn't supported in this version of macOS`），只剩 CLI 工具链可用。
+> SSOT 选择器会自然跳过它（`xcode_env.py list` 实测标它卡在 **G3 host-os-support**）——
+> **但别依赖「它排最后」这个巧合**：判据是 SDK 版本与宿主支持性，不是「哪个还能打开」。
 
 **设备探测三条判据缺一不可**（`detect_device.py`，由 `test-device-detect.py` 11 例双向验）：
 `reality == physical`（少了会挑中**模拟器**，实测踩过：手机拔线后脚本挑走 iPhone 17 Pro

@@ -10,27 +10,35 @@
 #   · 同时最多 3 个自签 app
 set -uo pipefail
 cd "$(dirname "$0")"
-BUNDLE=cyou.tianli.optionsspike
+# ── 项目身份:一律从 project.yml 派生,禁在本脚本里写死 ───────────────────────
+# 为什么(2026-08-19 立):/appios 教的起新 app 方式就是 `cp -R options-calc <name>`。
+# 名字写死在这里 = 每复制一次就留三处待改(工程名/scheme/产物名/bundle id),
+# 漏一处的表现是「编的是新 app、装上去的是旧 app」——**它不会报错**。
+# 上一轮同一个 cp -R 已经在「写死 Xcode 路径」上踩过一次,同一种病不修第二遍。
+PROJ=$(sed -n 's/^name: *//p' project.yml | head -1)
+BUNDLE=$(sed -n 's/.*PRODUCT_BUNDLE_IDENTIFIER: *//p' project.yml | head -1)
+[ -n "$PROJ" ]   || { echo "❌ project.yml 里读不出 name:" >&2; exit 1; }
+[ -n "$BUNDLE" ] || { echo "❌ project.yml 里读不出 PRODUCT_BUNDLE_IDENTIFIER:" >&2; exit 1; }
 die() { printf '\n❌ %s\n' "$1" >&2; exit 1; }
 
-# ── [1] 挑 Xcode:按「iOS SDK 版本 >= 设备系统版本」选,不写死路径 ──────────────
+# ── [1] 挑 Xcode:走总部 SSOT,禁写死路径(铁律 #5)────────────────────────────
+#    SSOT: /Users/tianli/Dev/tools/dev/lib/tools/macapp/xcode_env.{py,sh}
 # (2026-08-18 实证:手机 iOS 27.0 + Xcode 26.6 → devicectl 报 `connected (no DDI)`,
 #  装不上;换 Xcode 27 beta 后同一台设备立刻变成干净的 `connected`。)
+#
+# 这里**挑两次**,不是啰嗦:
+#   第一次没有 min-sdk —— 因为「设备系统版本」要靠 `xcrun devicectl` 才问得到,
+#   而 xcrun 本身就需要一个已选定的 DEVELOPER_DIR。先拿一个能跑的工具链。
+#   第二次带 $DEVOS —— 设备版本到手后再按「iOS SDK 不低于设备系统」重挑一遍。
+#   原先那 20 行自写挑选只做了「取 SDK 最高的那个」,**从不校验它 ≥ 设备系统**,
+#   所以 no DDI 那个坑它其实拦不住,是人换的 Xcode。
+_XCODE_ENV_SH=/Users/tianli/Dev/tools/dev/lib/tools/macapp/xcode_env.sh
+[ -f "$_XCODE_ENV_SH" ] || die "缺总部 Xcode SSOT $_XCODE_ENV_SH(禁写死 Xcode 路径顶上)"
+# shellcheck source=/dev/null
+source "$_XCODE_ENV_SH"
 echo "[1/6] 挑 Xcode"
-best=""; bestsdk=""
-for x in /Applications/Xcode*.app; do
-  [ -d "$x" ] || continue
-  sdk=$(DEVELOPER_DIR="$x/Contents/Developer" xcodebuild -showsdks 2>/dev/null \
-        | sed -n 's/.*-sdk iphoneos\([0-9.]*\).*/\1/p' | sort -V | tail -1)
-  [ -n "$sdk" ] || continue
-  printf "      %-34s iOS SDK %s\n" "$(basename "$x")" "$sdk"
-  if [ -z "$bestsdk" ] || [ "$(printf '%s\n%s\n' "$bestsdk" "$sdk" | sort -V | tail -1)" = "$sdk" ]; then
-    best="$x"; bestsdk="$sdk"
-  fi
-done
-[ -n "$best" ] || die "盘上找不到带 iOS SDK 的 Xcode。"
-export DEVELOPER_DIR="$best/Contents/Developer"
-echo "      ✅ 用 $(basename "$best")  (iOS SDK $bestsdk)"
+xcode_env_use ios
+echo "      ✅ 用 $XCODE_ENV_NAME  (iOS SDK $XCODE_ENV_SDK)"
 
 # ── [2] 找真机 ────────────────────────────────────────────────────────────────
 echo "[2/6] 找连着的 iPhone"
@@ -46,6 +54,12 @@ if [ -z "${UDID:-}" ]; then
    ④ 若状态是「connected (no DDI)」:手机系统比 Xcode 新,装对应版本的 Xcode"
 fi
 echo "      ✅ ${DEVNAME//_/ }  iOS $DEVOS  ($UDID)"
+
+# 设备系统版本到手 → 按它重挑一次 Xcode。**这一步才是真正拦 no DDI 的那道门**:
+# 上面第一次挑只保证「有 iOS SDK」,这次要求「iOS SDK 不低于 $DEVOS」,挑不出就硬失败,
+# 而不是编到一半在 devicectl 那里报一句完全不提「换 Xcode」的 `connected (no DDI)`。
+xcode_env_use ios "$DEVOS"
+echo "      ✅ 按设备 iOS $DEVOS 重挑: $XCODE_ENV_NAME (iOS SDK $XCODE_ENV_SDK)"
 
 # ── [3] 取 Team ID ────────────────────────────────────────────────────────────
 # 首次为真机构建前**还没有证书**,所以不能从证书里读 team。Xcode 登录后会把
@@ -65,7 +79,7 @@ fi
 # ── [4] 编 + 让 Xcode 现场申请证书与 profile ──────────────────────────────────
 echo "[4/6] 编译 + 申请签名(首次会慢,证书就是这一步生成的)"
 LOG=$(mktemp)
-xcodebuild -project OptionsSpike.xcodeproj -scheme OptionsSpike \
+xcodebuild -project "$PROJ.xcodeproj" -scheme "$PROJ" \
   -destination "id=$UDID" -derivedDataPath .dd-device \
   -allowProvisioningUpdates CODE_SIGN_STYLE=Automatic \
   ${DEVELOPMENT_TEAM:+DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM"} \
@@ -81,7 +95,7 @@ if [ $? -ne 0 ]; then
      去手机上删掉一个别的自签 app"
 fi
 echo "      ✅ BUILD SUCCEEDED"
-APP=$(find .dd-device -name 'OptionsSpike.app' -path '*iphoneos*' 2>/dev/null | head -1)
+APP=$(find .dd-device -name "$PROJ.app" -path '*iphoneos*' 2>/dev/null | head -1)
 [ -n "$APP" ] || die "编出来了但找不到 .app,日志: $LOG"
 
 # ── [4] 装 ────────────────────────────────────────────────────────────────────
@@ -99,10 +113,12 @@ else
   echo "        iPhone → 设置 → 通用 → VPN 与设备管理 → 开发者应用 → 信任"
 fi
 
+DISPLAY_NAME=$(sed -n 's/.*INFOPLIST_KEY_CFBundleDisplayName: *//p' project.yml | head -1)
+DISPLAY_NAME=${DISPLAY_NAME:-$PROJ}
 cat <<EOF
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-✅ 手机主屏找「期权决策台」。
+✅ 手机主屏找「\${DISPLAY_NAME}」。
 
 ⚠ 首次打开若提示「不受信任的开发者」:
    设置 → 通用 → VPN 与设备管理 → 开发者应用 → 你的 Apple ID → 信任

@@ -32,14 +32,16 @@
 一条命令搞定，**不用在 Xcode 里点任何东西**：
 
 ```bash
-bash ~/Dev/_scratch/ios-options-spike/install-to-iphone.sh
+bash ~/Apps/ios/options-calc/install-to-iphone.sh
 ```
 
 它做六件事：挑 Xcode → 找设备 → 读 Team ID → 编译并现场申请签名 → 装 → 启动。
 每步都有前置门，缺什么直接说缺什么。
 
 **只需要人做两件（各一次）**：
-1. Xcode → Settings → Apple Accounts → 登录 Apple ID
+1. **打开 `/Applications/Xcode-27.0.0-Beta.5.app`** → Settings → Apple Accounts → 登录 Apple ID
+   （别双击 `/Applications/Xcode.app`：那是 26.6，macOS 27.0 判它不支持，会弹
+   `This version of Xcode isn't supported in this version of macOS`，报错完全不提「换另一个」）
 2. 装完后手机上：设置 → 通用 → VPN 与设备管理 → 开发者应用 → 你的 Apple ID → **信任**
    （不点这一下，app 装得进去但打不开；`devicectl` 会明说
    `its profile has not been explicitly trusted by the user`）
@@ -51,6 +53,19 @@ iPhone 17 是 iOS 27.0，而 `/Applications/Xcode.app` 是 26.6（iOS SDK 26.5�
 `devicectl list devices` 显示 `connected (no DDI)`。换成 `Xcode-27.0.0-Beta.5.app`
 （iOS SDK 27.0）后，同一台设备立刻变成干净的 `connected`。
 → 脚本因此**不写死 Xcode 路径**，按「iOS SDK 版本最高」自动挑。
+2026-08-18 起这段算法已上提为总部 SSOT `~/Dev/tools/dev/lib/tools/macapp/xcode_env.{py,sh}`，
+并补了一道本文件当初没有的门：**Xcode 自带的 macOS 宿主 SDK 不能老于正在跑的 macOS** ——
+光看 `-showsdks` 排除不掉 26.6（它 rc=0、SDK 列表完整），只有这道门能把它判出局。
+
+> ⚠ **2026-08-19 订正**（上文默认「盘上两个 Xcode 都能用，只差 SDK 新旧」，这个前提已不成立）：
+> `/Applications/Xcode.app`(26.6) 已被 macOS 27.0 判为不支持，**GUI 打不开**（双击弹
+> `This version of Xcode isn't supported in this version of macOS`；其 Info.plist
+> `LSMinimumSystemVersion=26.2`，属兼容性拉黑不是版本号拦截）。它的**命令行工具链仍可用**
+> （`DEVELOPER_DIR=…/Xcode.app xcodebuild -version` rc=0），所以是「GUI 已死、只剩 CLI 半条命」，
+> 不是单纯的「旧」。占盘 **3.5 G**（`du -sh` 实测；模拟器 runtime 不在 .app 里，删它并不释放那 8.5 G）。本机唯一完整可用的是 `Xcode-27.0.0-Beta.5.app` ——
+> 上文的「两个都在盘上」现在只剩一个半。
+> 实证：`python3 ~/Dev/tools/dev/lib/tools/macapp/xcode_env.py list` 把 26.6 标为卡在
+> **G3 host-os-support**（宿主 macOS SDK 26.5 < 正在跑的 macOS 27.0）。
 
 **② 证书不是登录时生成的，是首次真机构建时生成的。**
 脚本最初有一道「先查 Apple Development 证书是否存在」的前置门 —— 这道门是错的，
@@ -62,7 +77,7 @@ iPhone 17 是 iOS 27.0，而 `/Applications/Xcode.app` 是 26.6（iOS SDK 26.5�
 
 | 限制 | 绕法 |
 |---|---|
-| 证书 **7 天到期** | ① Xcode 重新 ⌘R（手动，要 Mac 在手边）② SideStore 后台自动续签 |
+| 证书 **7 天到期** | ① 重跑 `./install-to-iphone.sh`（手动，要 Mac 在手边；2026-08-19 订正：原写「Xcode 重新 ⌘R」已非现行做法，且真要走 GUI 只能开 `Xcode-27.0.0-Beta.5.app`）② SideStore 后台自动续签 |
 | **同时最多 3 个 app** | LiveContainer（把 app 托管在一个容器里，只有容器占签名位） |
 
 自动续签这条路的真实代价（源：用户给的抖音教程，已抽帧 + whisper 转录逐句核）：
@@ -88,6 +103,11 @@ available to use with iphonesimulator SDK version 23F81a
 
 装的模拟器 runtime 是 26.4，Xcode 26.6 的 SDK 是 26.5，**actool 要求两者匹配**。
 跑 `xcodebuild -downloadPlatform iOS` 补了 8.52 GB（免费），之后 `xcodebuild` 与 `actool` 都通了。
+
+> 2026-08-19 复核：**换 Xcode-27.0.0-Beta.5（iOS SDK 27.0）后无需再下一次平台包** ——
+> `xcrun simctl list runtimes` 实测 iOS **26.4 / 26.5 / 27.0** 三个 runtime 均已在盘，
+> 「runtime 与 SDK 版本必须匹配」这个条件对 26.6(SDK 26.5) 与 Beta.5(SDK 27.0) 都已满足。
+> 上面这条坑记录本身没错，但它停在「只有 26.5」的世界观里，别据此以为换 Xcode 还要再下 8.5 GB。
 
 > ⚠ 排查中另有一个**偶发**现象：同一份 project.yml 连跑两次，第一次 `BUILD SUCCEEDED`、
 > 第二次 `Found no destinations`。据此做的一轮二分曾误判「INFOPLIST_KEY_* 破坏 destination 解析」，
@@ -131,8 +151,9 @@ Swift 版 `Sources/Calc.swift` 逐行照搬。
 ## 怎么重跑
 
 ```bash
-cd ~/Dev/_scratch/ios-options-spike
-export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer   # 不用 sudo 改 xcode-select
+cd ~/Apps/ios/options-calc          # 2026-08-18 订正：原文写的 ~/Dev/_scratch/ios-options-spike 已不存在
+# Xcode 走总部 SSOT 现挑，不写死也不用 sudo 改 xcode-select
+source /Users/tianli/Dev/tools/dev/lib/tools/macapp/xcode_env.sh && xcode_env_use macosx
 
 # 1) 算式回归（macOS 上跑，秒级）
 xcrun swiftc -O Sources/Calc.swift ref/main.swift -o ref/regress
@@ -154,6 +175,9 @@ xcodebuild -project OptionsSpike.xcodeproj -scheme OptionsSpike \
 
 ## 已知遗留
 
-- ⏸ 真机未验（见上，卡在 Apple ID 登录 + 插线）
+- ✅ 真机已验（2026-08-18 实测装上 iPhone 17 / iOS 27.0，证书
+  `Apple Development: zengtianli2@126.com (YYDKN95YU5)`）—— **原写的「⏸ 真机未验（卡在
+  Apple ID 登录 + 插线）」已作废**（2026-08-19 订正）：它与本文件开头结论表第 4 行
+  「装到真 iPhone ✅ 已实测装上」直接打架，是分叉会话重写 README 时留下的残渣。
 - 没有启动图（`INFOPLIST_KEY_UILaunchScreen_Generation: YES` 让 Xcode 自动生成；
   `build.sh` 那条用 `UILaunchScreen` 空字典）
