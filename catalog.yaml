@@ -20,5 +20,5 @@ notes: |
   又抓到千分位 $2,370 vs $2370。
 
   真机装机走 ./install-to-iphone.sh(免费 Personal Team,证书 7 天到期,重跑即续)。
-  设备探测抽在 detect_device.py,由 test-device-detect.py 11 例双向验证 ——
+  设备探测抽在 ~/Dev/tools/dev/lib/tools/macapp/ios/detect_device.py,由 ~/Dev/tools/dev/lib/tools/macapp/ios/test-device-detect.py 11 例双向验证 ——
   含「只有模拟器时绝不能挑它」(实测踩过:手机拔线后脚本挑走模拟器,编到一半才炸)。

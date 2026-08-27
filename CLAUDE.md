@@ -58,12 +58,12 @@ iPhone 17 / iOS 27.0 配 Xcode 26.6（iOS SDK 26.5）就是这个症状。
 > SSOT 选择器会自然跳过它（`xcode_env.py list` 实测标它卡在 **G3 host-os-support**）——
 > **但别依赖「它排最后」这个巧合**：判据是 SDK 版本与宿主支持性，不是「哪个还能打开」。
 
-**设备探测三条判据缺一不可**（`detect_device.py`，由 `test-device-detect.py` 11 例双向验）：
+**设备探测三条判据缺一不可**（`~/Dev/tools/dev/lib/tools/macapp/ios/detect_device.py`，由 `~/Dev/tools/dev/lib/tools/macapp/ios/test-device-detect.py` 11 例双向验）：
 `reality == physical`（少了会挑中**模拟器**，实测踩过：手机拔线后脚本挑走 iPhone 17 Pro
 模拟器，一路编到「找不到 .app」才炸、报错还指向别处）· 排除 `unavailable`/`disconnected`
 · `deviceType` 或 `marketingName` 任一含 iPhone。
 
-**探测逻辑只有一份**（`detect_device.py`），脚本与测试都调它。曾经是脚本内嵌一份、
+**探测逻辑只有一份**（`~/Dev/tools/dev/lib/tools/macapp/ios/detect_device.py`），脚本与测试都调它。曾经是脚本内嵌一份、
 测试抄一份，注释还写着「与…逐字相同」—— 那正是会漂的写法。
 
 ## 构建两条路，产物等价
