@@ -57,7 +57,7 @@ iPhone 17 / iOS 27.0 配 Xcode 26.6（iOS SDK 26.5）就是这个症状。
 > （弹 `This version of Xcode isn't supported in this version of macOS`），只剩 CLI 工具链可用。
 > SSOT 选择器会自然跳过它（`xcode_env.py list` 实测标它卡在 **G3 host-os-support**）——
 > **但别依赖「它排最后」这个巧合**：判据是 SDK 版本与宿主支持性，不是「哪个还能打开」。
-> 2026-09-01 补：Beta 5 已删；26.6 是死重（G3 永久跳过、TestFlight 也走 Beta 6），卸载须 sudo；27 正式版出来后 App Store 装回。
+> 2026-09-01 补：Beta 5 与 26.6 均已删（26.6 是死重：G3 永久跳过、TestFlight 也走 Beta 6），盘上只剩 `Xcode-27.0.0-Beta.6.app`；27 正式版出来后 App Store 装回。
 
 **设备探测三条判据缺一不可**（`~/Dev/tools/dev/lib/tools/macapp/ios/detect_device.py`，由 `~/Dev/tools/dev/lib/tools/macapp/ios/test-device-detect.py` 11 例双向验）：
 `reality == physical`（少了会挑中**模拟器**，实测踩过：手机拔线后脚本挑走 iPhone 17 Pro
