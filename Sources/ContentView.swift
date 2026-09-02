@@ -23,9 +23,47 @@ struct ContentView: View {
         Result { try Calc.build(kind, p, n: nByKind[kind] ?? 1, dte: dte, spot: spot, iv: iv) }
     }
 
+    /// 宽屏（iPad 横竖屏 / Mac）= regular：输入与结果并排两栏，一眼看全；
+    /// 手机 = compact：一栏上下，靠「只看结果」折起输入（2026-09-02 三平台起）。
+    @Environment(\.horizontalSizeClass) private var hSize
+
     var body: some View {
         NavigationStack {
-            Form {
+            Group {
+                if hSize == .regular {
+                    HStack(spacing: 0) {
+                        // .grouped：Mac 默认的 columns 式 Form 会把说明文字压成一字一行、分段控件撑出栏外（2026-09-02 窗口截图实证）
+                        Form { kindSection; inputSections }
+                            .formStyle(.grouped)
+                            .frame(minWidth: 340, idealWidth: 400, maxWidth: 460)
+                        Divider()
+                        Form { resultSections }
+                            .formStyle(.grouped)
+                    }
+                } else {
+                    Form {
+                        kindSection
+                        if showInputs { inputSections }
+                        resultSections
+                    }
+                }
+            }
+            .navigationTitle("期权决策台")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                if hSize != .regular {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button(showInputs ? "只看结果" : "改参数") {
+                            withAnimation { showInputs.toggle() }
+                        }.font(.subheadline)
+                    }
+                }
+            }
+        }
+        .preferredColorScheme(.light)
+    }
+
+    @ViewBuilder private var kindSection: some View {
                 Section {
                     Picker("结构", selection: $kind) {
                         ForEach(Calc.Kind.allCases) { Text($0.title).tag($0) }
@@ -34,8 +72,9 @@ struct ContentView: View {
                     Text(kind.blurb)
                         .font(.footnote).foregroundStyle(.secondary)
                 }
+    }
 
-                if showInputs {
+    @ViewBuilder private var inputSections: some View {
                 Section("通用") {
                     Num("现价 S", $spot)
                     Num("张数 n", Binding(get: { nByKind[kind] ?? 1 },
@@ -70,8 +109,9 @@ struct ContentView: View {
                         Num("put 侧净收 /股", $p.cput); Num("call 侧净收 /股", $p.ccall)
                     }
                 }
-                }
+    }
 
+    @ViewBuilder private var resultSections: some View {
                 switch result {
                 case .failure(let e):
                     Section {
@@ -81,18 +121,6 @@ struct ContentView: View {
                 case .success(let o):
                     ResultSections(o: o)
                 }
-            }
-            .navigationTitle("期权决策台")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button(showInputs ? "只看结果" : "改参数") {
-                        withAnimation { showInputs.toggle() }
-                    }.font(.subheadline)
-                }
-            }
-        }
-        .preferredColorScheme(.light)
     }
 
     @ViewBuilder
@@ -101,6 +129,7 @@ struct ContentView: View {
             Text(label).font(.subheadline)
             Spacer(minLength: 12)
             TextField(label, value: v, format: .number)
+                .labelsHidden()          // Mac 的 TextField 会把 title 再画一遍成前置标签（窗口截图实证），iOS 上 title 只是占位符不受影响
                 .keyboardType(.numbersAndPunctuation)
                 .multilineTextAlignment(.trailing)
                 .frame(maxWidth: 130)
