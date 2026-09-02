@@ -1,7 +1,9 @@
 name: options-calc
+bundle_id: cyou.tianli.optionsspike   # 派生自 project.yml（SSOT）；fleet_audit a/g 项与 app_registry gate-mac 按它对装机
 origin: own
 lifecycle: active
 form: ios          # ~/Apps/ios 形态的首个住户(2026-08-18 立)
+platforms: [iphone, ipad, mac]   # 跑在哪（正交于 form=源码住哪）；multiplatform.py audit 与 project.yml 对账
 
 one_liner: 期权决策台 —— 备兑开仓 / 现金担保 put / 信用价差 / 铁鹰四结构的到期损益、占用、年化与概率
 
