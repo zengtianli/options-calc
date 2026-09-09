@@ -32,7 +32,7 @@
 一条命令搞定，**不用在 Xcode 里点任何东西**：
 
 ```bash
-bash ~/Apps/ios/options-calc/install-to-iphone.sh
+bash ~/Apps/ios/options-calc/01-源程序/install-to-iphone.sh
 ```
 
 它做六件事：挑 Xcode → 找设备 → 读 Team ID → 编译并现场申请签名 → 装 → 启动。
@@ -151,7 +151,7 @@ Swift 版 `Sources/Calc.swift` 逐行照搬。
 ## 怎么重跑
 
 ```bash
-cd ~/Apps/ios/options-calc          # 2026-08-18 订正：原文写的 ~/Dev/_scratch/ios-options-spike 已不存在
+cd ~/Apps/ios/options-calc/01-源程序          # 2026-08-18 订正：原文写的 ~/Dev/_scratch/ios-options-spike 已不存在
 # Xcode 走总部 SSOT 现挑，不写死也不用 sudo 改 xcode-select
 source ~/Dev/tools/dev/lib/tools/macapp/xcode_env.sh && xcode_env_use macosx
 
