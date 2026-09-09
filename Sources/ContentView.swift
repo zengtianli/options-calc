@@ -51,6 +51,14 @@ struct ContentView: View {
             .navigationTitle("期权决策台")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    NavigationLink {
+                        UsagePrivacyView()
+                    } label: {
+                        Label("使用说明与隐私", systemImage: "info.circle")
+                    }
+                    .accessibilityIdentifier("usagePrivacy")
+                }
                 if hSize != .regular {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button(showInputs ? "只看结果" : "改参数") {
